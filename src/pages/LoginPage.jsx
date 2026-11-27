@@ -1,14 +1,16 @@
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ShieldCheck, Sparkles, AlertCircle, Info, Lock } from 'lucide-react'
 import { Button } from '../components/common/Button'
 import { Card } from '../components/common/Card'
 import { useAuth } from '../hooks/useAuth'
+import { getOAuthError } from '../utils/oauth'
 
 export function LoginPage() {
-  const { loginWithGoogle, loginAsDemoStudent } = useAuth()
+  const { loginWithGoogle, loginAsDemoStudent, isLoading, session } = useAuth()
+  const location = useLocation()
   const [loading, setLoading] = useState(false)
-  const [errorMessage, setErrorMessage] = useState('')
+  const [errorMessage, setErrorMessage] = useState(() => location.state?.oauthError || getOAuthError(location))
   const navigate = useNavigate()
 
   const handleGoogleLogin = async () => {
@@ -16,13 +18,8 @@ export function LoginPage() {
     setErrorMessage('')
     try {
       await loginWithGoogle()
-    } catch (err) {
-      console.warn('Google OAuth prompt error:', err)
-      setErrorMessage(
-        err.message ||
-        'Supabase Google OAuth is not configured yet. Configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.'
-      )
-    } finally {
+    } catch {
+      setErrorMessage('Could not connect to Google sign-in. Check your connection and try again.')
       setLoading(false)
     }
   }
@@ -31,6 +28,8 @@ export function LoginPage() {
     loginAsDemoStudent()
     navigate('/dashboard')
   }
+
+  if (session?.user) return <Navigate to="/dashboard" replace />
 
   return (
     <div className="min-h-[85vh] flex items-center justify-center px-4 py-12">
@@ -69,7 +68,7 @@ export function LoginPage() {
           </div>
 
           {errorMessage && (
-            <div className="p-3.5 rounded-xl bg-red-50/90 border border-red-200 text-xs text-red-700 flex items-start gap-2.5">
+            <div role="alert" className="p-3.5 rounded-xl bg-red-50/90 border border-red-200 text-xs text-red-700 flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-semibold">Authentication Notice</p>
@@ -83,7 +82,7 @@ export function LoginPage() {
             <button
               type="button"
               onClick={handleGoogleLogin}
-              disabled={loading}
+              disabled={loading || isLoading}
               className="w-full flex items-center justify-center gap-3 bg-white hover:bg-neutral-50 text-neutral-800 font-semibold text-sm py-3 px-4 rounded-xl border border-[rgba(227,213,202,0.85)] shadow-xs transition-all duration-200 hover:shadow-soft disabled:opacity-60"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -121,6 +120,7 @@ export function LoginPage() {
               size="md"
               icon={Sparkles}
               onClick={handleDemoLogin}
+              disabled={loading || isLoading}
             >
               Explore With Demo Student Profile
             </Button>

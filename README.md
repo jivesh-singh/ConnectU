@@ -186,6 +186,8 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key-here
 
 For Netlify, set the same variables for builds in each deploy context you use. Changes to these variables take effect on the next deploy. The Netlify configuration lets users open or refresh React Router routes directly.
 
+In Supabase Auth URL Configuration, set the Site URL to the production Netlify origin and allow its exact `/dashboard` URL as an additional redirect (for this site: `https://connectu2.netlify.app/dashboard`). Allow the equivalent callback for any other origin where you intend to test sign-in. If Google rejects an account before returning to ConnectU, check the OAuth app’s audience: a testing app only accepts listed test users, and an Internal app is restricted to its organization.
+
 ### 4. Run Development Server
 ```bash
 npm run dev

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react'
 import { supabase, isSupabaseConfigured } from '../services/supabase'
 import { studentService } from '../services/studentService'
 import { INITIAL_USER_PROFILE } from '../services/mockData'
@@ -6,6 +6,15 @@ import { INITIAL_USER_PROFILE } from '../services/mockData'
 const AuthContext = createContext(null)
 
 const AUTH_STORAGE_KEY = 'connectu_auth_state_v1'
+
+function readDemoSession() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY))
+    return saved?.isAuthenticated && saved.isDemoStudent && saved.user ? saved : null
+  } catch {
+    return null
+  }
+}
 
 export function formatSupabaseUser(authUser, existingProfile = null) {
   if (!authUser) return null
@@ -64,127 +73,73 @@ export function formatSupabaseUser(authUser, existingProfile = null) {
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
+  const [demoUser, setDemoUser] = useState(null)
   const [session, setSession] = useState(null)
+  const [profile, setProfile] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(true)
+  const authUserId = session?.user?.id
 
   useEffect(() => {
+    function restoreDemoSession() {
+      const saved = readDemoSession()
+      setDemoUser(saved?.user ?? null)
+      if (saved) setHasCompletedOnboarding(saved.hasCompletedOnboarding ?? true)
+    }
+
+    if (!isSupabaseConfigured) {
+      restoreDemoSession()
+      setIsLoading(false)
+      return
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      setSession(currentSession)
+      setIsLoading(false)
+
+      if (currentSession?.user) {
+        setDemoUser(null)
+        if (readDemoSession()) localStorage.removeItem('connectu_current_user_v1')
+        localStorage.removeItem(AUTH_STORAGE_KEY)
+      } else if (event === 'INITIAL_SESSION') {
+        restoreDemoSession()
+      } else if (event === 'SIGNED_OUT') {
+        setDemoUser(null)
+        setProfile(null)
+        localStorage.removeItem(AUTH_STORAGE_KEY)
+        localStorage.removeItem('connectu_current_user_v1')
+        localStorage.removeItem('connectu_conversations_v1')
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    if (!authUserId) return
+
     let mounted = true
 
-    async function checkAuth() {
+    async function loadProfile() {
       try {
-        if (isSupabaseConfigured) {
-          // Fetch the current authenticated user using supabase.auth.getUser()
-          const { data: { user: authUser }, error } = await supabase.auth.getUser()
-
-          if (mounted && authUser) {
-            const { data: sessionData } = await supabase.auth.getSession()
-            setSession(sessionData?.session || null)
-
-            // Load associated student profile record from public.profiles using authenticated user's UUID
-            let profileData = null
-            try {
-              const { data } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', authUser.id)
-                .maybeSingle()
-              if (data) profileData = data
-            } catch (profileErr) {
-              console.warn('Profile read warning during auth check:', profileErr)
-            }
-
-            const formatted = formatSupabaseUser(authUser, profileData)
-            setUser(formatted)
-            setIsLoading(false)
-            // Remove any stale demo session cache
-            localStorage.removeItem(AUTH_STORAGE_KEY)
-            localStorage.removeItem('connectu_current_user_v1')
-            return
-          } else if (mounted) {
-            setSession(null)
-          }
-        }
-
-        // Check if demo student session is explicitly active (only if isDemoStudent flag is set)
-        const savedAuth = localStorage.getItem(AUTH_STORAGE_KEY)
-        if (savedAuth && mounted) {
-          try {
-            const parsed = JSON.parse(savedAuth)
-            if (parsed.isAuthenticated && parsed.isDemoStudent && parsed.user) {
-              setUser(parsed.user)
-              setHasCompletedOnboarding(parsed.hasCompletedOnboarding ?? true)
-              setIsLoading(false)
-              return
-            }
-          } catch (e) {
-            // ignore corrupted localStorage
-          }
-        }
-
-        if (mounted) {
-          setUser(null)
-        }
-      } catch (err) {
-        console.error('Auth initialization error:', err)
-        if (mounted) {
-          setUser(null)
-          setSession(null)
-        }
-      } finally {
-        if (mounted) setIsLoading(false)
+        const { data } = await supabase.from('profiles').select('*').eq('id', authUserId).maybeSingle()
+        if (mounted && data) setProfile(current => current?.id === authUserId ? current : data)
+      } catch (error) {
+        console.warn('Could not load the signed-in student profile:', error)
       }
     }
 
-    checkAuth()
-
-    let authListener = null
-    if (isSupabaseConfigured) {
-      // Subscribe to authentication changes using supabase.auth.onAuthStateChange()
-      const { data } = supabase.auth.onAuthStateChange(async (_event, currentSession) => {
-        if (!mounted) return
-        setSession(currentSession)
-
-        if (currentSession?.user) {
-          let profileData = null
-          try {
-            const { data } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', currentSession.user.id)
-              .maybeSingle()
-            if (data) profileData = data
-          } catch (e) {
-            console.warn('Profile read warning on auth state change:', e)
-          }
-
-          if (mounted) {
-            setUser(formatSupabaseUser(currentSession.user, profileData))
-            setIsLoading(false)
-            localStorage.removeItem(AUTH_STORAGE_KEY)
-            localStorage.removeItem('connectu_current_user_v1')
-          }
-        } else {
-          // Signed-out state: clear all user identities and conversation storage
-          if (mounted) {
-            setUser(null)
-            setSession(null)
-            setIsLoading(false)
-            localStorage.removeItem(AUTH_STORAGE_KEY)
-            localStorage.removeItem('connectu_current_user_v1')
-            localStorage.removeItem('connectu_conversations_v1')
-          }
-        }
-      })
-      authListener = data?.subscription
-    }
+    loadProfile()
 
     return () => {
       mounted = false
-      if (authListener) authListener.unsubscribe()
     }
-  }, [])
+  }, [authUserId])
+
+  const authUser = session?.user
+  const user = useMemo(() => authUser
+    ? formatSupabaseUser(authUser, profile?.id === authUser.id ? profile : null)
+    : demoUser, [authUser, profile, demoUser])
 
   // Google OAuth Login
   const loginWithGoogle = async () => {
@@ -207,7 +162,7 @@ export function AuthProvider({ children }) {
   // Demo Login (Instant evaluation)
   const loginAsDemoStudent = () => {
     const demoUser = INITIAL_USER_PROFILE
-    setUser(demoUser)
+    setDemoUser(demoUser)
     setHasCompletedOnboarding(true)
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({
       isAuthenticated: true,
@@ -224,7 +179,8 @@ export function AuthProvider({ children }) {
       ...profileData,
       profileCompletion: 100
     })
-    setUser(updated)
+    if (authUserId) setProfile(updated)
+    else setDemoUser(updated)
     setHasCompletedOnboarding(true)
     return updated
   }
@@ -238,8 +194,9 @@ export function AuthProvider({ children }) {
         console.warn('Supabase signOut error:', err)
       }
     }
-    setUser(null)
+    setDemoUser(null)
     setSession(null)
+    setProfile(null)
     setHasCompletedOnboarding(false)
     localStorage.removeItem(AUTH_STORAGE_KEY)
     localStorage.removeItem('connectu_current_user_v1')
