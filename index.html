@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%23292724'/><circle cx='40' cy='50' r='18' fill='%23D5BDAF'/><circle cx='60' cy='50' r='18' fill='%23F5EBE0'/><path d='M40 50 A 18 18 0 0 0 60 50' fill='%23D6CCC2'/></svg>" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ConnectU — Student Interest & Collaboration Platform</title>
+    <!-- Google Fonts: DM Sans & Inter for premium editorial typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-[#EDEDE9] text-[#292724] font-sans antialiased selection:bg-[#D5BDAF] selection:text-[#292724] min-h-screen relative">
+    
+    <!-- Ambient subtle blurred beige radial shapes for realistic glassmorphism depth (Section 6) -->
+    <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden" aria-hidden="true">
+      <div style="position: fixed; top: -10%; left: 15%; width: 55vw; height: 55vw; max-width: 700px; max-height: 700px; background: radial-gradient(circle, rgba(214, 204, 194, 0.45) 0%, rgba(237, 237, 233, 0) 70%); filter: blur(60px); opacity: 0.75;"></div>
+      <div style="position: fixed; bottom: 5%; right: 10%; width: 50vw; height: 50vw; max-width: 650px; max-height: 650px; background: radial-gradient(circle, rgba(213, 189, 175, 0.35) 0%, rgba(237, 237, 233, 0) 70%); filter: blur(70px); opacity: 0.65;"></div>
+      <div style="position: fixed; top: 45%; left: 60%; width: 40vw; height: 40vw; max-width: 500px; max-height: 500px; background: radial-gradient(circle, rgba(245, 235, 224, 0.6) 0%, rgba(237, 237, 233, 0) 70%); filter: blur(50px); opacity: 0.5;"></div>
+    </div>
+
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
