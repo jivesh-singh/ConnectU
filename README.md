@@ -171,17 +171,20 @@ src/
 npm install
 ```
 
-### 3. Environment Setup (Optional for Supabase integration)
+### 3. Environment Setup (Required)
 Copy the example environment file:
 ```bash
 cp .env.example .env
 ```
-Fill in your Supabase project credentials:
+Fill in your Supabase project URL and public client key:
 ```env
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key-here
+VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key-here
 ```
-*(If left unset, ConnectU automatically operates in Interactive Evaluation Mode with full frontend functionality).*
+
+`VITE_SUPABASE_ANON_KEY` also works in place of `VITE_SUPABASE_PUBLISHABLE_KEY`. Never use a service-role key in a `VITE_` variable because these variables are bundled into the browser app.
+
+For Netlify, set the same variables for builds in each deploy context you use. Changes to these variables take effect on the next deploy. The Netlify configuration lets users open or refresh React Router routes directly.
 
 ### 4. Run Development Server
 ```bash
