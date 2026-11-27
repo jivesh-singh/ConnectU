@@ -1,14 +1,16 @@
 import React from 'react'
-import { Outlet, Link, Navigate } from 'react-router-dom'
+import { Outlet, Link, Navigate, useLocation } from 'react-router-dom'
 import { Sidebar } from '../components/common/Sidebar'
 import { BottomNav } from '../components/common/BottomNav'
 import { Avatar } from '../components/common/Avatar'
 import { useAuth } from '../hooks/useAuth'
 import { VoiceCallProvider } from '../context/VoiceCallContext'
 import { Sparkles, ExternalLink } from 'lucide-react'
+import { getOAuthError } from '../utils/oauth'
 
 export function AppLayout() {
   const { user, isSupabaseConfigured, isLoading } = useAuth()
+  const location = useLocation()
 
   const userMeta = user?.user_metadata || {}
   const displayName =
@@ -42,7 +44,7 @@ export function AppLayout() {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/login" replace state={{ oauthError: getOAuthError(location) }} />
   }
 
   return (
